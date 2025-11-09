@@ -93,28 +93,42 @@ export default function Home() {
     setResult(null);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('resume', file);
+    // CRITICAL FIX: Use FileReader to send the file as a raw ArrayBuffer
+    const reader = new FileReader();
+    
+    reader.onload = async (event) => {
+      const fileBuffer = event.target.result;
 
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          // Send the raw file data
+          body: fileBuffer, 
+          headers: {
+            // Specify the file type
+            'Content-Type': file.type || 'application/octet-stream',
+            // Send the filename/extension for the Python parser to use
+            'X-File-Name': file.name,
+          },
+        });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        setResult(data);
-      } else {
-        setError(data.detail || 'Analysis failed due to a server error.');
+        const data = await response.json();
+        
+        if (response.ok) {
+          setResult(data);
+        } else {
+          setError(data.detail || `Analysis failed due to a server error. Status: ${response.status}`);
+        }
+      } catch (e) {
+        console.error('Network or system error:', e);
+        setError('A network error occurred. Please check your file and try again.');
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error('Network or system error:', e);
-      setError('A network error occurred. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    };
+    
+    // Start reading the file as a raw ArrayBuffer
+    reader.readAsArrayBuffer(file);
   };
 
   // --- Render Functions ---
@@ -161,7 +175,6 @@ export default function Home() {
             <p style={{ fontWeight: 'bold' }}>Status: {result.status}</p>
           </div>
           <div style={{ width: '40%', textAlign: 'right' }}>
-            {/* Simple visual representation of score */}
             
           </div>
         </div>
