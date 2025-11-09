@@ -1,6 +1,5 @@
 fastapi
-uvicorn
 python-multipart
 python-docx
-pdfminer.six
-pydantic 
+pypdf     
+pydantic
