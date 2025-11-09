@@ -15,7 +15,7 @@
     {
       "src": "/api/(.*)",
       "dest": "api/index.py",
-      "methods": ["POST"] 
+      "methods": ["POST"]  // CRITICAL FIX: Ensures the POST method is explicitly allowed
     },
     {
       "src": "/(.*)",
