@@ -1,12 +1,12 @@
-# api/index.py
+# api/index.py (FINAL STABLE VERSION)
 
-from fastapi import FastAPI, Request, HTTPException # Import 'Request'
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 import io
 import re
 import traceback
-from pdfminer.high_level import extract_text_to_fp
 import docx
+from pypdf import PdfReader # New stable PDF library
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -14,40 +14,41 @@ app = FastAPI()
 # --- Utility Functions for Text Extraction ---
 
 def extract_text(file_content: bytes, filename: str) -> str:
-    """Extracts text from PDF or DOCX file content."""
+    """Extracts text from PDF or DOCX file content using stable libraries."""
     
     filename = filename.lower()
-    
+    full_text = ""
+
     if filename.endswith('.pdf'):
         try:
-            # Use pdfminer.six for PDF text extraction
-            output_string = io.StringIO()
-            extract_text_to_fp(io.BytesIO(file_content), output_string)
-            print("Successfully extracted text from PDF.")
-            return output_string.getvalue()
+            # Use pypdf for stable PDF text extraction
+            reader = PdfReader(io.BytesIO(file_content))
+            for page in reader.pages:
+                full_text += page.extract_text()
+            print("Successfully extracted text from PDF using pypdf.")
+            
         except Exception as e:
             print(f"ERROR: PDF extraction failed for {filename}. {e}")
-            raise ValueError("Failed to read PDF file. It might be scanned or corrupted.")
+            raise ValueError("Failed to read PDF. Corrupt or image-based file.")
             
     elif filename.endswith('.docx'):
         try:
             # Use python-docx for DOCX text extraction
             document = docx.Document(io.BytesIO(file_content))
-            text = '\n'.join([p.text for p in document.paragraphs])
+            full_text = '\n'.join([p.text for p in document.paragraphs])
             print("Successfully extracted text from DOCX.")
-            return text
+            
         except Exception as e:
             print(f"ERROR: DOCX extraction failed for {filename}. {e}")
-            raise ValueError("Failed to read DOCX file. It might be corrupted or in an old DOC format.")
+            raise ValueError("Failed to read DOCX file. Not a valid DOCX format.")
         
-    raise ValueError("Unsupported file type. Please use PDF or DOCX.")
+    if not full_text:
+        raise ValueError("Could not extract any readable text from the file.")
+        
+    return full_text
 
-
-# --- Core ATS Analysis Logic ---
-
+# --- Core ATS Analysis Logic (Same as before) ---
 def analyze_resume_text(text: str):
-    """Performs a basic, rule-based ATS analysis on the extracted text."""
-    
     text = text.lower()
     score = 0
     recommendations = []
@@ -112,27 +113,18 @@ def analyze_resume_text(text: str):
 # --- API Endpoint ---
 
 @app.post("/api/analyze")
-async def analyze(request: Request): # Receives raw 'Request' object
-    """Main API endpoint to receive file and return ATS score."""
+async def analyze(request: Request):
     
     try:
-        # 1. Read the custom header for the filename sent from the frontend
+        # Get filename from custom header
         filename = request.headers.get('X-File-Name', 'uploaded_file').lower()
         if not filename:
             raise HTTPException(status_code=400, detail="Filename header missing from request.")
 
-        print(f"Processing file: {filename}")
-
-        if not (filename.endswith('.pdf') or filename.endswith('.docx')):
-            raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
-
-        # 2. Read the raw request body directly (CRITICAL FIX)
+        # Read the raw request body
         file_content = await request.body()
-        
         if not file_content:
              raise HTTPException(status_code=400, detail="File content is empty.")
-
-        print(f"File content read, size: {len(file_content) / (1024*1024):.2f} MB")
 
         # Extract Text
         text = extract_text(file_content, filename)
@@ -140,12 +132,10 @@ async def analyze(request: Request): # Receives raw 'Request' object
         # Run Analysis
         result = analyze_resume_text(text)
         
-        print(f"Analysis complete. Score: {result['score']}")
         return JSONResponse(content=result)
         
     except ValueError as e:
         # Handles errors raised from the extract_text function (e.g., corrupt file)
-        print(f"Client-side error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     
     except Exception as e:
