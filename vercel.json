@@ -15,7 +15,7 @@
     {
       "src": "/api/(.*)",
       "dest": "api/index.py",
-      "methods": ["POST"] // Ensure POST method is explicitly routed
+      "methods": ["POST"] 
     },
     {
       "src": "/(.*)",
