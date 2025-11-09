@@ -1,20 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Add this section to increase the body parser limit
+  // CRITICAL: This is the fix for the 413 error
   api: {
     bodyParser: {
-      sizeLimit: '10mb', // Set the limit to 10MB (or higher if needed)
+      sizeLimit: '10mb', // Ensure this is set to 10mb or higher
     },
-  },
-  
-  // Standard Next.js configuration
-  webpack: (config) => {
-    // This setting ensures your Next.js pages build correctly
-    config.resolve.extensionAlias = {
-      ".js": [".js", ".jsx", ".ts", ".tsx"],
-      ".mjs": [".mjs"],
-    };
-    return config;
   },
 };
 
