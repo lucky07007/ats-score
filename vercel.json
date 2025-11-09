@@ -14,7 +14,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.py"  <-- MUST point to your Python file
+      "dest": "api/index.py" 
     },
     {
       "src": "/(.*)",
