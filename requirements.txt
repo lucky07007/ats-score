@@ -1,5 +1,5 @@
 fastapi
 python-multipart
 python-docx
-pypdf     
+pypdf
 pydantic
