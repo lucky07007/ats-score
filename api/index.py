@@ -1,6 +1,6 @@
 # api/index.py
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, Request, HTTPException # Import 'Request'
 from fastapi.responses import JSONResponse
 import io
 import re
@@ -26,7 +26,6 @@ def extract_text(file_content: bytes, filename: str) -> str:
             print("Successfully extracted text from PDF.")
             return output_string.getvalue()
         except Exception as e:
-            # Log specific PDF parsing error
             print(f"ERROR: PDF extraction failed for {filename}. {e}")
             raise ValueError("Failed to read PDF file. It might be scanned or corrupted.")
             
@@ -38,7 +37,6 @@ def extract_text(file_content: bytes, filename: str) -> str:
             print("Successfully extracted text from DOCX.")
             return text
         except Exception as e:
-            # Log specific DOCX parsing error
             print(f"ERROR: DOCX extraction failed for {filename}. {e}")
             raise ValueError("Failed to read DOCX file. It might be corrupted or in an old DOC format.")
         
@@ -88,7 +86,6 @@ def analyze_resume_text(text: str):
     sample_keywords = ['javascript', 'python', 'sql', 'agile', 'data analysis', 'internship', 'leadership']
     found_keywords = [kw for kw in sample_keywords if kw in text]
     
-    # Ensure no division by zero
     keyword_score = len(found_keywords) * (30 / len(sample_keywords)) if sample_keywords else 0
     score += keyword_score
     recommendations.append(f"🔑 Keywords: Found {len(found_keywords)} out of {len(sample_keywords)} sample critical skills.")
@@ -115,18 +112,26 @@ def analyze_resume_text(text: str):
 # --- API Endpoint ---
 
 @app.post("/api/analyze")
-async def analyze(resume: UploadFile = File(...)):
+async def analyze(request: Request): # Receives raw 'Request' object
     """Main API endpoint to receive file and return ATS score."""
     
-    filename = resume.filename.lower()
-    print(f"Processing file: {filename}")
-
-    if not (filename.endswith('.pdf') or filename.endswith('.docx')):
-        raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
-
     try:
-        # Read the file content
-        file_content = await resume.read()
+        # 1. Read the custom header for the filename sent from the frontend
+        filename = request.headers.get('X-File-Name', 'uploaded_file').lower()
+        if not filename:
+            raise HTTPException(status_code=400, detail="Filename header missing from request.")
+
+        print(f"Processing file: {filename}")
+
+        if not (filename.endswith('.pdf') or filename.endswith('.docx')):
+            raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
+
+        # 2. Read the raw request body directly (CRITICAL FIX)
+        file_content = await request.body()
+        
+        if not file_content:
+             raise HTTPException(status_code=400, detail="File content is empty.")
+
         print(f"File content read, size: {len(file_content) / (1024*1024):.2f} MB")
 
         # Extract Text
