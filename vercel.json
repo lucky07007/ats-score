@@ -2,14 +2,23 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/api/analyze.js",
+      "src": "package.json",
       "use": "@vercel/next"
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "15mb" }
     }
   ],
   "routes": [
     {
-      "src": "/api/analyze",
-      "dest": "/src/api/analyze.js"
+      "src": "/api/(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "src/pages/$1"
     }
   ]
 }
